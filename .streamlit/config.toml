@@ -1,0 +1,11 @@
+[theme]
+primaryColor = "#00E57D"              # Bright, modern green (accent color for buttons, links)
+backgroundColor = "#1E1E2F"           # Deep desaturated navy/grey (main background)
+secondaryBackgroundColor = "#2C2C3A"  # Slightly lighter grey (cards, sidebar, containers)
+textColor = "#F0F2F5"                 # Soft white (primary readable text)
+
+[runner]
+fastReruns = true
+
+[client]
+showSidebarNavigation = false

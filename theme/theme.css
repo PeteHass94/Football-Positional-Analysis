@@ -1,0 +1,129 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Roboto+Mono:wght@400;500&display=swap');
+
+/* Theme Variables */
+
+/* | Variable             | Hex       | Use                          | Notes                               |
+| -------------------- | --------- | ---------------------------- | ----------------------------------- |
+| `--bg-color`         | `#1E1E2F` | Background                   | Deep blue-grey, easier on the eyes  |
+| `--card-bg`          | `#2C2C3A` | Panel/Sidebar backgrounds    | Slight contrast to separate blocks  |
+| `--text-color`       | `#F0F2F5` | Primary text                 | Softer than pure white              |
+| `--muted-text-color` | `#B0B3BA` | Secondary text / hints       | For labels, placeholders            |
+| `--accent-color`     | `#00E57D` | Buttons, links, highlights   | Modern green, football feel         |
+| `--accent-hover`     | `#00C96A` | Hover state for accent items | Darker green                        |
+| `--code-bg`          | `#31313F` | Code blocks, input fields    | Dark, not black, for readability    |
+| `--error-color`      | `#FF4C4C` | Errors or alerts             | High visibility without being harsh | */
+
+:root {
+    --bg-color: #1E1E2F;
+    --card-bg: #2C2C3A;
+    --text-color: #F0F2F5;
+    --muted-text-color: #B0B3BA;
+    --accent-color: #00E57D;
+    --accent-hover: #00C96A;
+    --code-bg: #31313F;
+    --error-color: #FF4C4C;
+}
+
+/* Base Styles */
+html, body, [class*="css"] {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
+
+/* Headings */
+h1, h2, h3, h4 {
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 0.5rem;
+}
+
+/* Code, Preformatted */
+code, pre, .mono {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.95em;
+    color: var(--accent-color);
+    background-color: var(--code-bg);
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+}
+
+/* Links */
+a {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+a:hover {
+    text-decoration: underline;
+}
+
+/* Buttons */
+button, .stButton > button {
+    background-color: var(--accent-color);
+    color: var(--bg-color);
+    font-weight: 600;
+    border-radius: 6px;
+    border: none;
+    padding: 0.5rem 1rem;
+}
+button:hover, .stButton > button:hover {
+    background-color: var(--accent-hover);
+    transition: background-color 0.3s ease;
+}
+
+/* Streamlit Sidebar */
+div[data-testid="stSidebar"] {
+    background-color: var(--card-bg);
+}
+div[data-testid="stSidebar"] span, 
+div[data-testid="stSidebar"] p {
+    color: var(--text-color);
+    font-family: 'Inter', sans-serif;
+}
+
+
+/* div[data-testid="stSidebarNav"], div[data-testid="stSidebarNavLinkContainer"], div[data-testid="stSidebarNavSeparator"] {
+    display: none;
+} */
+
+
+/* Scrollbars */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-thumb {
+    background-color: var(--accent-color);
+    opacity: 0.4;
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background-color: var(--accent-hover);
+}
+
+/* Input fields */
+input, select, textarea {
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    border: 1px solid var(--accent-color);
+    border-radius: 4px;
+    padding: 0.4rem;
+}
+
+/* Layout Constraints */
+section[tabindex="0"] > div[data-testid="stAppViewBlockContainer"] {
+    max-width: 75rem;
+    padding: 2rem;
+}
+
+/* Charts Container Tweaks */
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    background-color: var(--card-bg);
+    border-radius: 1rem;
+    padding: 1rem;
+}
+
+/* Footer or Attribution */
+footer {
+    font-size: 0.8rem;
+    color: var(--muted-text-color);
+}
