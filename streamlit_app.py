@@ -29,14 +29,14 @@ from utils.page_components import (
     
 sidebar_container = add_common_page_elements()
 
-displaytext = """## Welcome to Football Analysis on Game State """
+displaytext = """## Welcome to Football Analysis on Positional Data App \n\n"""
 
 st.markdown(displaytext)
 
 displaytext = (
-    """Game state is described as a teams state in a game, whether they are winning, drawing or losing. \n\n"""
-    """I will be showing how I scrape data from the internet then display in this website. """
-    """I will look into a number of factors to help show important information on each team. \n\n"""
+    """Using data made open from SkillCorner.  https://github.com/SkillCorner/opendata/tree/master \n\n"""
+    """This app will look to analyze football (soccer) teams and players using positional data. \n\n"""
+    """The hope is to produce a reliable indicator if positional data indicates likelihood of chance creation or conceding. \n\n"""
 )
 
 st.markdown(displaytext)
