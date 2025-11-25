@@ -4,4 +4,5 @@ numpy==1.26.3
 mplsoccer==1.4.0
 plotly==6.2.0
 plotly-express==0.4.1
+pathlib==1.0.1
 
