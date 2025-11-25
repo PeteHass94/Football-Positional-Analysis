@@ -70,23 +70,8 @@ def add_page_selector():
     st.page_link("pages/data_exploration.py", label="Data Exploration")
     st.page_link("pages/dynamic_events_visualisation.py", label="Dynamic Events Visualisation")
     st.page_link("pages/phases_of_play.py", label="Phases of Play Analysis")
-    
-    # st.page_link("pages/scrapping.py", label="Web Scrapping")
-    # st.page_link("pages/add_seasons.py", label="Add Seasons")
-    # st.page_link("pages/add_teams.py", label="Add Teams")
-    # st.page_link("pages/add_fixtures.py", label="Add Fixtures")
-    # st.page_link("pages/add_managers.py", label="Add Managers")
-    # st.page_link("pages/add_players.py", label="Add Players")
-    # st.page_link("pages/add_incidents.py", label="Add Incidents")
-    # st.page_link("pages/euro_pass_analysis.py", label="Euro 24 pass analysis")
-    # st.page_link("pages/attacker_analysis.py", label="2018 Season att. analysis")
-    # st.page_link("pages/run_analysis.py", label="CL 2023 run analysis")
-    
-    # st.page_link("pages/football_scout.py", label="Football Scout")
-    # st.page_link("pages/embedder.py", label="Embdedding Tool")
-    # st.page_link("pages/wvs_chat.py", label="World Value Survey")
-    # st.page_link("pages/personality_test.py", label="Personality Test")
-    # st.page_link("pages/own_page.py", label="Your Own Page")
+    st.page_link("pages/minute_by_minute.py", label="Minute by Minute Analysis")
+
     
 
     # st.image("data/ressources/img/TwelveEdu.png")
