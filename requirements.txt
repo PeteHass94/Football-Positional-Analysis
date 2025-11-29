@@ -6,3 +6,4 @@ plotly
 plotly-express
 pathlib
 scikit-learn
+xgboost
