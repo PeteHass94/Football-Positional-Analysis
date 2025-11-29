@@ -5,4 +5,4 @@ mplsoccer
 plotly
 plotly-express
 pathlib
-
+scikit-learn
