@@ -175,10 +175,10 @@ def main():
         st.write(f"**Capacity**: {stadium['capacity']}")
         st.write(f"**Pitch size**: {meta['pitch_length']}m × {meta['pitch_width']}m")
 
-    st.markdown("---")
-
     with st.expander("Show raw match metadata"):
         st.json(meta, expanded=False)
+    
+    st.markdown("---")
 
     dyn = load_dynamic_events(match_id)
     frames = load_tracking_frames(match_id)

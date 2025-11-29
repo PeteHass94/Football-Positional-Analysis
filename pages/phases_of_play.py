@@ -183,6 +183,8 @@ def main():
         st.write(f"**Capacity**: {stadium['capacity']}")
         st.write(f"**Pitch size**: {meta['pitch_length']}m × {meta['pitch_width']}m")
 
+    with st.expander("Show raw match metadata"):
+            st.json(meta, expanded=False)
     st.markdown("---")
     
     phases = load_phases_of_play(match_id)
