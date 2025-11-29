@@ -1242,6 +1242,126 @@ def main():
         st.subheader("🌲 XGBoost feature importance")
         st.dataframe(df_imp)
 
+    st.markdown("---")
+    
+    # -----------------------------------------------------
+    # High-probability cases
+    # -----------------------------------------------------
+    
+    st.header("7. High-probability cases: did a shot actually happen?")
+
+    st.markdown(
+        """
+        Here we look at minutes where the model is **very confident** that a shot will
+        be created in the next 5 minutes, and check whether that actually happened.
+
+        - Each row = one (match, team, minute) sample  
+        - `proba` = model's predicted shot probability  
+        - `label_shot_next5` = 1 if a shot *actually* occurred in the next 5 minutes  
+        - `hit` = True if high probability **and** a shot really occurred (true positive)  
+        """
+    )
+
+    # Ensure probabilities exist on df_all for both models
+    X_all = df_all[feature_cols].values
+    if "proba_lr" not in df_all.columns:
+        df_all["proba_lr"] = lr_pipe.predict_proba(X_all)[:, 1]
+    if xgb_model is not None and "proba_xgb" not in df_all.columns:
+        df_all["proba_xgb"] = xgb_model.predict_proba(X_all)[:, 1]
+
+    model_for_check = st.radio(
+        "Model to inspect",
+        options=["Logistic Regression", "XGBoost"] if xgb_model is not None else ["Logistic Regression"],
+        horizontal=True,
+        key="check_model",
+    )
+    proba_col_check = "proba_lr" if model_for_check == "Logistic Regression" else "proba_xgb"
+
+    # Optional filters
+    match_filter = st.selectbox(
+        "Filter by match (optional)",
+        options=["All"] + [str(m) for m in MATCH_IDS],
+        index=0,
+        key="check_match_filter",
+    )
+
+    team_options = ["All"] + sorted(df_all["team_short"].unique().tolist())
+    team_filter = st.selectbox(
+        "Filter by team (optional)",
+        options=team_options,
+        index=0,
+        key="check_team_filter",
+    )
+
+    # Apply filters
+    df_check = df_all.copy()
+    if match_filter != "All":
+        df_check = df_check[df_check["match_id"] == int(match_filter)]
+    if team_filter != "All":
+        df_check = df_check[df_check["team_short"] == team_filter]
+
+    # Threshold for “high probability”
+    threshold = st.slider(
+        "High-probability threshold",
+        min_value=0.5,
+        max_value=0.99,
+        value=0.65,
+        step=0.01,
+        key="check_threshold",
+    )
+
+    df_high = df_check[df_check[proba_col_check] >= threshold].copy()
+    df_high["hit"] = df_high["label_shot_next5"] == 1
+
+    st.markdown(
+        f"Found **{len(df_high)}** samples with `{proba_col_check} ≥ {threshold:.2f}` "
+        f"under the current filters."
+    )
+
+    if not df_high.empty:
+        n_hits = int(df_high["hit"].sum())
+        hit_rate = n_hits / len(df_high)
+
+        col_a, col_b, col_c = st.columns(3)
+        with col_a:
+            st.metric("High-probability samples", len(df_high))
+        with col_b:
+            st.metric("True positives (hits)", n_hits)
+        with col_c:
+            st.metric("Hit rate", f"{hit_rate*100:.1f}%")
+
+        # Show top-N by probability
+        df_display = df_high[
+            [
+                "match_id",
+                "team_short",
+                "team_role",
+                "minute",
+                proba_col_check,
+                "label_shot_next5",
+                "hit",
+            ]
+        ].sort_values(proba_col_check, ascending=False)
+
+        st.subheader("High-probability minutes")
+        st.dataframe(df_display.head(100), use_container_width=True)
+
+        st.markdown(
+            """
+            **Reading this table**
+
+            - Rows with `hit = True` are **true positives** — the model correctly
+              flagged a dangerous minute that led to a shot.
+            - Rows with `hit = False` are **false alarms** — high probability but
+              no shot occurred in the next 5 minutes.
+            - Changing the threshold lets you explore the trade-off between
+              **being selective** (few, very confident cases) and **being broad**
+              (more cases, lower average accuracy).
+            """
+        )
+    else:
+        st.info("No samples above this threshold under the current filters.")
+
 
 if __name__ == "__main__":
     main()
