@@ -55,8 +55,8 @@ def load_tracking_sample(match_id: int, n_frames: int = 500) -> pd.DataFrame:
     rows = []
     with path.open() as f:
         for i, line in enumerate(f):
-            if i >= n_frames:
-                break
+            # if i >= n_frames:
+            #     break
             obj = json.loads(line)
 
             ball = obj.get("ball_data", {}) or {}

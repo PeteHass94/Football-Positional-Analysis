@@ -66,11 +66,14 @@ def set_page_config():
 
 def add_page_selector():
     #st.image("data/ressources/img/TwelveEdu.png")
+    st.page_link("streamlit_app.py", label="Home")
     st.page_link("pages/matches_page.py", label="Matches Overview")
     st.page_link("pages/data_exploration.py", label="Data Exploration")
     st.page_link("pages/dynamic_events_visualisation.py", label="Dynamic Events Visualisation")
     st.page_link("pages/phases_of_play.py", label="Phases of Play Analysis")
     st.page_link("pages/minute_by_minute.py", label="Minute by Minute Analysis")
+    st.page_link("pages/shot_creation_probability.py", label="Shot Creation Probability")
+   
 
     
 

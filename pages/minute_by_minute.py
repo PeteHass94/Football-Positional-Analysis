@@ -199,17 +199,21 @@ def aggregate_minute_positions(match_id: int):
 
 def compute_event_minute_col(dyn: pd.DataFrame) -> pd.Series:
     """
-    Compute a 'minute' column for dynamic events using time_start, second_start or minute_start.
+    Extract the minute from a MM:SS.s style string in time_start.
     """
     if "time_start" in dyn.columns:
-        # assume HH:MM:SS or MM:SS – we only care about hour+minute
-        return dyn["time_start"].astype(str).apply(timestamp_to_minute)
+        # split before ":" and convert to int
+        return dyn["time_start"].astype(str).str.split(":", n=1, expand=True)[0].astype(int)
+
     elif "second_start" in dyn.columns:
         return (dyn["second_start"].fillna(0) // 60).astype(int)
+
     elif "minute_start" in dyn.columns:
         return dyn["minute_start"].fillna(0).astype(int)
+
     else:
         return pd.Series(0, index=dyn.index, dtype=int)
+
 
 
 def is_shot_event(row: pd.Series) -> bool:
@@ -225,37 +229,101 @@ def is_shot_event(row: pd.Series) -> bool:
 def compute_minute_targets(match_id: int) -> pd.DataFrame:
     """
     For each minute (0–MAX_MINUTE-1), compute:
-      - shot_next5 (bool): True if ANY dynamic event with:
-          minute > current_minute AND minute <= current_minute + 5
-        has end_type == 'shot'.
+      - shot_next5 (bool): does ANY team take a shot in (m, m+5]?
+      - home_shot_next5 (bool)
+      - away_shot_next5 (bool)
+      - home_goal_next5 (bool): is there a home shot in (m, m+5] that leads_to_goal?
+      - away_goal_next5 (bool)
     """
+    meta = load_match_metadata(match_id)
     dyn = load_dynamic_events(match_id).copy()
 
-    # compute event minute
+    # Compute event minute (integer bin from MM:SS.s time_start)
     dyn["minute"] = compute_event_minute_col(dyn)
 
-    # identify shot events
+    # Identify shots
     dyn["is_shot"] = dyn.apply(is_shot_event, axis=1)
+
+    # lead_to_goal column → bool
+    if "lead_to_goal" in dyn.columns:
+        dyn["lead_to_goal_bool"] = dyn["lead_to_goal"].fillna(0).astype(bool)
+    else:
+        dyn["lead_to_goal_bool"] = False
+
+    # Team mapping
+    home_id = meta["home_team"]["id"]
+    away_id = meta["away_team"]["id"]
+    home_short = meta["home_team"]["short_name"]
+    away_short = meta["away_team"]["short_name"]
+
+    team_id_col = None
+    team_short_col = None
+
+    if "team_in_possession_id" in dyn.columns:
+        team_id_col = "team_in_possession_id"
+    elif "team_id" in dyn.columns:
+        team_id_col = "team_id"
+
+    if "team_in_possession_shortname" in dyn.columns:
+        team_short_col = "team_in_possession_shortname"
+    elif "team_in_possession_name" in dyn.columns:
+        team_short_col = "team_in_possession_name"
 
     rows = []
     for minute in range(0, MAX_MINUTE):
-        m_start = minute      # current minute
-        m_end = minute + 5    # 5-minute horizon
+        m_start = minute
+        m_end = minute + 5
 
-        # event_minute > current_minute AND <= current_minute + 5
+        # window (m, m+5]
         mask_window = (dyn["minute"] > m_start) & (dyn["minute"] <= m_end)
-        win = dyn[mask_window]
+        win = dyn[mask_window & dyn["is_shot"]]
 
-        shot_next5 = bool(win["is_shot"].any())
+        if win.empty:
+            rows.append(
+                {
+                    "minute": minute,
+                    "shot_next5": False,
+                    "home_shot_next5": False,
+                    "away_shot_next5": False,
+                    "home_goal_next5": False,
+                    "away_goal_next5": False,
+                }
+            )
+            continue
+
+        # Split by team
+        if team_id_col is not None:
+            home_shots = win[win[team_id_col] == home_id]
+            away_shots = win[win[team_id_col] == away_id]
+        elif team_short_col is not None:
+            home_shots = win[win[team_short_col] == home_short]
+            away_shots = win[win[team_short_col] == away_short]
+        else:
+            # Fallback: can't distinguish teams → count everything as "any shot"
+            home_shots = pd.DataFrame(columns=win.columns)
+            away_shots = pd.DataFrame(columns=win.columns)
+
+        home_shot_next5 = not home_shots.empty
+        away_shot_next5 = not away_shots.empty
+
+        home_goal_next5 = bool(home_shots["lead_to_goal_bool"].any()) if home_shot_next5 else False
+        away_goal_next5 = bool(away_shots["lead_to_goal_bool"].any()) if away_shot_next5 else False
+
+        shot_next5 = home_shot_next5 or away_shot_next5
 
         rows.append(
             {
                 "minute": minute,
                 "shot_next5": shot_next5,
+                "home_shot_next5": home_shot_next5,
+                "away_shot_next5": away_shot_next5,
+                "home_goal_next5": home_goal_next5,
+                "away_goal_next5": away_goal_next5,
             }
         )
 
     return pd.DataFrame(rows)
+
 
 
 # ---------------------------------------------------------
@@ -338,8 +406,9 @@ def main():
         For the selected match, this page shows **average positions** of all players and the ball  
         for each match minute (0–99), and labels each minute with:
         
-        - Whether the **home team** will have a shot in the next 5 minutes  
-        - The **total xshot_player_possession_max** for each team in that 5-minute window  
+        - Whether there is a **shot in the next 5 minutes**  
+        - Which **team** takes that shot  
+        - Whether that shot **leads to a goal** (`lead_to_goal` in the dynamic events)
         """
     )
 
@@ -430,12 +499,27 @@ def main():
                     # Targets for this minute
                     tgt = targets_map.get(minute)
                     if tgt is not None:
-                        shot_label = "Yes" if tgt["shot_next5"] else "No"
-                        st.caption(
-                            f"Next 5 mins (m→m+5]: Shot occurs: **{shot_label}**"
-                        )
-                else:
-                    st.write(f"No tracking data for minute {minute}")
+                        if not tgt["shot_next5"]:
+                            st.caption("Next 5 mins (m→m+5]: No shot")
+                        else:
+                            parts = []
+
+                            if tgt["home_shot_next5"]:
+                                txt = f"{meta['home_team']['short_name']} shot"
+                                if tgt["home_goal_next5"]:
+                                    txt += " (**GOAL** ⚽)"
+                                parts.append(txt)
+
+                            if tgt["away_shot_next5"]:
+                                txt = f"{meta['away_team']['short_name']} shot"
+                                if tgt["away_goal_next5"]:
+                                    txt += " (**GOAL** ⚽)"
+                                parts.append(txt)
+
+                            st.caption("Next 5 mins (m→m+5]: " + " | ".join(parts))
+
+                    else:
+                        st.write(f"No tracking data for minute {minute}")
 
 if __name__ == "__main__":
     main()
