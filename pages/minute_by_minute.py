@@ -412,7 +412,27 @@ def main():
         """
     )
 
-    match_id = st.selectbox("Select match", MATCH_IDS, index=0)
+    # Build readable labels for the selectbox
+    def build_match_label(match_id: int) -> str:
+        meta = load_match_metadata(match_id)
+        home = meta["home_team"]["short_name"]
+        away = meta["away_team"]["short_name"]
+        score = f"{meta['home_team_score']}–{meta['away_team_score']}"
+        date = meta["date_time"].split("T")[0]  # or format nicely
+
+        return f"{match_id} : {home} vs {away} — {score} ({date})"
+
+
+    match_labels = {build_match_label(mid): mid for mid in MATCH_IDS}
+
+    # Selectbox: show label, return match_id
+    label_selected = st.selectbox(
+        "Select a match",
+        options=list(match_labels.keys()),
+        index=0,
+    )
+
+    match_id = match_labels[label_selected]   # this is the real match_id
 
     meta = load_match_metadata(match_id)
     

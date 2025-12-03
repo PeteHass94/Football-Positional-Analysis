@@ -5,6 +5,13 @@ import pandas as pd
 import streamlit as st
 from utils.page_components import add_common_page_elements
 
+from utils.renders.column_descriptions import (
+    build_common_docs,
+    build_phases_docs,
+    build_tracking_docs,
+    build_dynamic_events_docs,
+)
+
 add_common_page_elements()
 
 # ---------------------------------------------------------
@@ -150,125 +157,7 @@ def load_players_table(match_id: int) -> pd.DataFrame:
 
 
 
-# ---------------------------------------------------------
-# Column description helpers
-# ---------------------------------------------------------
 
-def build_common_docs() -> dict:
-    # Base descriptions reused across datasets
-    return {
-        "index": "Row index within this file (0-based).",
-        "match_id": "Identifier of the match.",
-        "frame_start": "First tracking frame index associated with this row.",
-        "frame_end": "Last tracking frame index associated with this row.",
-        "frame_physical_start": "First frame index within the physical (on-pitch) action.",
-        "time_start": "Start time of this row (hh:mm.ss within the match period).",
-        "time_end": "End time of this row (hh:mm.ss within the match period).",
-        "minute_start": "Start minute (integer) of this row.",
-        "second_start": "Start second (integer) of this row.",
-        "duration": "Duration of this row in seconds (approx).",
-        "period": "Match period (1 = first half, 2 = second half, etc.).",
-        "attacking_side_id": "Numeric code for the side currently attacking.",
-        "attacking_side": "Text label for the side currently attacking (home / away).",
-        "team_id": "Identifier of the team related to this row.",
-        "team_shortname": "Short name / acronym of the team.",
-        "x_start": "Start x-coordinate of the event/phase (pitch length axis, in metres).",
-        "y_start": "Start y-coordinate of the event/phase (pitch width axis, in metres).",
-        "x_end": "End x-coordinate of the event/phase.",
-        "y_end": "End y-coordinate of the event/phase.",
-        "channel_start": "Pitch vertical ‘channel’ at the start location (e.g. left / half-space / central).",
-        "channel_end": "Pitch vertical ‘channel’ at the end location.",
-        "third_start": "Pitch third at the start location (defensive / middle / attacking).",
-        "third_end": "Pitch third at the end location.",
-        "penalty_area_start": "Whether the start location is inside the penalty area.",
-        "penalty_area_end": "Whether the end location is inside the penalty area.",
-        "lead_to_shot": "Flag indicating that this row is in the build-up to a shot.",
-        "lead_to_goal": "Flag indicating that this row is in the build-up to a goal.",
-    }
-
-
-def build_dynamic_events_docs(df: pd.DataFrame) -> pd.DataFrame:
-    docs = build_common_docs()
-    docs.update(
-        {
-            "event_id": "Unique identifier of the event (string key).",
-            "event_type_id": "Numeric code for the event type.",
-            "event_type": "Event type (e.g. pass, carry, duel, shot).",
-            "player_id": "Identifier of the main player involved in the event.",
-            "player_shortname": "Short name of the player linked to the event.",
-            "player_in_possession_id": "Identifier of the player in possession at this moment.",
-            "player_in_possession_shortname": "Short name of the player in possession.",
-            "player_in_possession_position": "On-pitch position label for the player in possession.",
-            "team_in_possession_id": "Team identifier for the team in possession.",
-            "team_in_possession_shortname": "Short name of the team in possession.",
-            "game_interruption_before": "Type of interruption immediately before this event (kick-off, foul, etc.).",
-            "game_interruption_after": "Type of interruption immediately after this event.",
-            "xg": "Expected Goals (if present) – model estimate of scoring probability for this event.",
-            "xa": "Expected Assists (if present) – contribution to shot creation.",
-            "xloss_player_possession_end": "SkillCorner metric of possession value loss/gain by the player at the end of the event.",
-            "team_in_possession_width_start": "Width (max y - min y) of the team in possession at event start.",
-            "team_in_possession_length_start": "Length (max x - min x) of the team in possession at event start.",
-            "team_out_of_possession_width_start": "Width of the out-of-possession team at event start.",
-            "team_out_of_possession_length_start": "Length of the out-of-possession team at event start.",
-        }
-    )
-
-    rows = []
-    for col in df.columns:
-        desc = docs.get(col, "No description added yet – refer to SkillCorner documentation if needed.")
-        rows.append({"column": col, "description": desc})
-
-    return pd.DataFrame(rows)
-
-
-def build_phases_docs(df: pd.DataFrame) -> pd.DataFrame:
-    docs = build_common_docs()
-    docs.update(
-        {
-            "team_in_possession_id": "Team identifier for the team in possession throughout the phase.",
-            "team_in_possession_shortname": "Short name of the team in possession during the phase.",
-            "n_player_possessions_in_phase": "Number of individual on-ball player possessions within this phase.",
-            "phase_type_id": "Numeric code describing the phase type (e.g. build-up, sustained attack).",
-            "phase_type": "Text label for the phase type.",
-            "team_in_possession_width_start": "Width of the team in possession at the start of the phase.",
-            "team_in_possession_width_end": "Width of the team in possession at the end of the phase.",
-            "team_in_possession_length_start": "Length of the team in possession at the start of the phase.",
-            "team_in_possession_length_end": "Length of the team in possession at the end of the phase.",
-            "team_out_of_possession_width_start": "Width of the out-of-possession team at the start of the phase.",
-            "team_out_of_possession_width_end": "Width of the out-of-possession team at the end of the phase.",
-            "team_out_of_possession_length_start": "Length of the out-of-possession team at the start of the phase.",
-            "team_out_of_possession_length_end": "Length of the out-of-possession team at the end of the phase.",
-        }
-    )
-
-    rows = []
-    for col in df.columns:
-        desc = docs.get(col, "No description added yet – refer to SkillCorner documentation if needed.")
-        rows.append({"column": col, "description": desc})
-
-    return pd.DataFrame(rows)
-
-
-def build_tracking_docs(df: pd.DataFrame) -> pd.DataFrame:
-    docs = {
-        "frame": "Sequential index of the tracking frame.",
-        "timestamp": "Time within the match period (hh:mm:ss.ff) for this frame.",
-        "period": "Match period (1 = first half, 2 = second half, etc.).",
-        "ball_x": "Ball x-coordinate in pitch metres (length).",
-        "ball_y": "Ball y-coordinate in pitch metres (width).",
-        "ball_z": "Ball z-coordinate in metres (height).",
-        "ball_is_detected": "True if the ball is detected in this frame, False otherwise.",
-        "in_possession_player_id": "Identifier of the player considered in possession for this frame.",
-        "in_possession_group": "Group label for possession (home / away / none).",
-        "n_players": "Number of players with tracking data in this frame.",
-    }
-
-    rows = []
-    for col in df.columns:
-        desc = docs.get(col, "No description added yet – derived from tracking_extrapolated.jsonl.")
-        rows.append({"column": col, "description": desc})
-
-    return pd.DataFrame(rows)
 
 
 # ---------------------------------------------------------
@@ -286,7 +175,27 @@ def main():
     )
 
     # Match selector
-    match_id = st.selectbox("Select a match", MATCH_IDS, index=0)
+    # Build readable labels for the selectbox
+    def build_match_label(match_id: int) -> str:
+        meta = load_match_metadata(match_id)
+        home = meta["home_team"]["short_name"]
+        away = meta["away_team"]["short_name"]
+        score = f"{meta['home_team_score']}–{meta['away_team_score']}"
+        date = meta["date_time"].split("T")[0]  # or format nicely
+
+        return f"{match_id} : {home} vs {away} — {score} ({date})"
+
+
+    match_labels = {build_match_label(mid): mid for mid in MATCH_IDS}
+
+    # Selectbox: show label, return match_id
+    label_selected = st.selectbox(
+        "Select a match",
+        options=list(match_labels.keys()),
+        index=0,
+    )
+
+    match_id = match_labels[label_selected]   # this is the real match_id
 
     # Load core files
     meta = load_match_metadata(match_id)
@@ -333,7 +242,7 @@ def main():
 
     # Tabs for the 3 core data files and additional frame viewer and players table
     tab_dyn, tab_phase, tab_track, tab_frames, tab_players = st.tabs(
-        ["Dynamic events", "Phases of play", "Tracking (sample)", "Frame viewer", "Players"]
+        ["Dynamic events", "Phases of play", "Tracking", "Frame viewer", "Players"]
     )
 
 
@@ -362,10 +271,15 @@ def main():
         docs_dyn = build_dynamic_events_docs(dyn)
         st.dataframe(
             docs_dyn,
+            height=600,
             use_container_width=True,
             hide_index=True,
         )
 
+        # st.markdown("**Column descriptions**")        
+        dynamicEvents_pdf_url = "https://26560301.fs1.hubspotusercontent-eu1.net/hubfs/26560301/Guides/Dynamic%20Events/20250216%20-%20Dynamic%20Events%20CSV%20Specifications.pdf" 
+        st.markdown(f"[Open Dynamic Events PDF in New Tab]({dynamicEvents_pdf_url})", unsafe_allow_html=True)
+        
     # -----------------------------------------------------
     # Phases of play tab
     # -----------------------------------------------------
@@ -391,9 +305,14 @@ def main():
         docs_phase = build_phases_docs(phases)
         st.dataframe(
             docs_phase,
+            height=1000,
             use_container_width=True,
             hide_index=True,
         )
+        
+        phasesOfPlay_pdf_url = "https://26560301.fs1.hubspotusercontent-eu1.net/hubfs/26560301/Guides/Phases%20of%20Play/20250216%20-%20Phases%20of%20Play%20CSV%20Specifications.pdf" 
+        st.markdown(f"[Open Phases of Play PDF in New Tab]({phasesOfPlay_pdf_url})", unsafe_allow_html=True)
+        
 
     # -----------------------------------------------------
     # Tracking tab
@@ -403,14 +322,13 @@ def main():
         st.markdown(
             """
             Frame-by-frame tracking data (`*_tracking_extrapolated.jsonl`).  
-            This sample flattens the first N frames into a simple table that
-            shows ball location, possession label, and number of tracked players.
+            This shows ball location, possession label, and number of tracked players.
             """
         )
 
         st.write(f"Sampled frames: **{len(tracking_sample):,}**")
 
-        st.markdown("**Preview**")
+        st.markdown("**Tracking**")
         st.dataframe(
             tracking_sample,
             use_container_width=True,

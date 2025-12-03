@@ -139,7 +139,27 @@ def main():
 
     st.title("⚽ Match Visualisation")
 
-    match_id = st.selectbox("Select match", MATCH_IDS, index=0)
+    # Build readable labels for the selectbox
+    def build_match_label(match_id: int) -> str:
+        meta = load_match_metadata(match_id)
+        home = meta["home_team"]["short_name"]
+        away = meta["away_team"]["short_name"]
+        score = f"{meta['home_team_score']}–{meta['away_team_score']}"
+        date = meta["date_time"].split("T")[0]  # or format nicely
+
+        return f"{match_id} : {home} vs {away} — {score} ({date})"
+
+
+    match_labels = {build_match_label(mid): mid for mid in MATCH_IDS}
+
+    # Selectbox: show label, return match_id
+    label_selected = st.selectbox(
+        "Select a match",
+        options=list(match_labels.keys()),
+        index=0,
+    )
+
+    match_id = match_labels[label_selected]   # this is the real match_id
 
     meta = load_match_metadata(match_id)
     
@@ -223,13 +243,36 @@ def main():
             st.session_state.event_pos = min(len(dyn) - 1, st.session_state.event_pos + 1)
             st.session_state.frame_number = None
 
+    # Helper to build a nice label for each event position
+    def format_event_option(pos: int) -> str:
+        row = dyn.iloc[pos]
+
+        # Event type & subtype (fallbacks in case columns differ)
+        etype = row.get("event_type", row.get("event_type_name", ""))
+        esub = row.get("event_subtype", row.get("event_subtype_name", ""))
+
+        # Frames
+        f_start = row.get("frame_start", "")
+        f_end = row.get("frame_end", "")
+
+        # Times
+        t_start = row.get("time_start", row.get("second_start", ""))
+        t_end = row.get("time_end", row.get("second_end", ""))
+
+        return (
+            f"{pos} : {etype} - {esub} | "
+            f"Frames {f_start} - {f_end} "
+            f"({t_start} - {t_end})"
+        )
+
     # Selectbox synced by *position*
     event_positions = list(range(len(dyn)))
     selected_pos = st.selectbox(
-        "Select event (by index)",
+        "Select event",
         options=event_positions,
         index=st.session_state.event_pos,
         key="event_select",
+        format_func=format_event_option,
     )
 
     if selected_pos != st.session_state.event_pos:

@@ -673,12 +673,35 @@ def main():
     # -----------------------------------------------------
     st.header("2. Inspect features minute-by-minute")
 
-    match_id_vis = st.selectbox(
+    # Build readable labels for the selectbox
+    def build_match_label(match_id: int) -> str:
+        meta = load_match_metadata(match_id)
+        home = meta["home_team"]["short_name"]
+        away = meta["away_team"]["short_name"]
+        score = f"{meta['home_team_score']}–{meta['away_team_score']}"
+        date = meta["date_time"].split("T")[0]  # or format nicely
+
+        return f"{match_id} : {home} vs {away} — {score} ({date})"
+
+
+    match_labels = {build_match_label(mid): mid for mid in MATCH_IDS}
+
+    # Selectbox: show label, return match_id
+    label_selected = st.selectbox(
         "Match to inspect",
-        MATCH_IDS,
+        options=list(match_labels.keys()),
         index=0,
-        key="inspect_match",
     )
+
+    match_id_vis = match_labels[label_selected]   # this is the real match_id
+    
+    
+    # match_id_vis = st.selectbox(
+    #     "Match to inspect",
+    #     MATCH_IDS,
+    #     index=0,
+    #     key="inspect_match",
+    # )
     meta_vis = load_match_metadata(match_id_vis)
     # -----------------------------------------------------
     # Match overview
@@ -758,6 +781,36 @@ def main():
             row = row.iloc[0]  # single row
             team_role = row["team_role"]  # 'home' or 'away'
 
+            st.subheader("Feature Descriptions")
+
+            feature_descriptions = {
+                "n_players": "Number of detected players contributing to this minute’s team shape.",
+                "centroid_x": "Average forward/backward field position of the team (higher = more advanced).",
+                "centroid_y": "Average left/right field position of the team (shift in width).",
+                "spread_x": "Horizontal spread of the team — how wide the team is.",
+                "spread_y": "Vertical spread of the team — depth / how stretched the block is.",
+                "hull_area": "Convex hull area of all outfield players — total surface area of team shape.",
+                "n_final_third": "Number of players positioned in the attacking final third.",
+                "n_players_behind_ball": "How many players are positioned behind the ball (support/defensive structure).",
+                "avg_dist_behind_ball": "Average distance of supporting players behind the ball.",
+                "max_dist_behind_ball": "Maximum distance of any single player behind the ball (rest defence depth).",
+                "ball_x": "Ball vertical position — how high up the pitch possession is.",
+                "ball_y": "Ball lateral position — left/centre/right zones.",
+                "dist_centroid_ball": "Distance between ball and team centroid (how connected the team is to the ball).",
+            }
+
+            df_feature_desc = pd.DataFrame(
+                {"feature": list(feature_descriptions.keys()),
+                "description": list(feature_descriptions.values())}
+            )
+
+            st.dataframe(df_feature_desc, use_container_width=True)
+
+            st.markdown("""
+            These features summarise **team structure**, **ball context**, and **positional shape** each minute.
+            They form the basis for predicting whether the team will create a shot within the next 5 minutes.
+            """)
+
             st.subheader(f"Features for minute {minute_sel}")
 
             # Show key features + label in a tidy table
@@ -776,6 +829,8 @@ def main():
                 "ball_y",
                 "dist_centroid_ball",
             ]
+            
+            
 
             display_cols = (
                 ["match_id", "team_short", "team_role", "minute", "label_shot_next5"]
