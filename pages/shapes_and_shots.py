@@ -210,12 +210,18 @@ def standardise_x_for_team(x: float, is_away_panel: bool) -> float:
     - Home panel: keep x as is (defend left, attack right in raw coords)
     - Away panel: mirror horizontally so away also attacks to the right
     """
-    return -x if is_away_panel else x
+    return x if is_away_panel else -x
 
+def standardise_y_for_team(y: float, is_away_panel: bool) -> float:
+    """
+    Simple panel-level standardisation:
+    - Home panel: keep y as is (defend left, attack right in raw coords)
+    - Away panel: mirror horizontally so away also attacks to the right
+    """
+    return y if is_away_panel else -y
 
 def standardise_xy_for_team(x: float, y: float, is_away_panel: bool):
-    return standardise_x_for_team(x, is_away_panel), y
-
+    return standardise_x_for_team(x, is_away_panel), standardise_y_for_team(y, is_away_panel)
 
 # ---------------------------------------------------------
 # Plot average minute shapes with optional highlighting
@@ -263,9 +269,9 @@ def plot_minute_team_panel(meta: dict,
             ys_all,
             ax=ax,
             facecolor=team_kit["jersey_color"],
-            edgecolor=team_kit["number_color"],
+            edgecolor="black" if team_kit["number_color"] == '#ffffff' else team_kit["number_color"],
             s=50,
-            alpha=0.5,
+            # alpha=0.75,
             label=team_name,
         )
 
@@ -292,7 +298,7 @@ def plot_minute_team_panel(meta: dict,
                     zorder=4,
                     label=f"{highlight_group}",
                 )
-                # Optional: annotate shirt numbers
+                # Annotate shirt numbers
                 for x, y, num in zip(xs_h, ys_h, labels):
                     ax.text(x, y, str(num), ha="center", va="center", fontsize=8, weight="bold")
 
@@ -308,7 +314,6 @@ def plot_minute_team_panel(meta: dict,
             edgecolors="black",
             s=120,
             zorder=5,
-            label="Ball",
         )
 
     team_label = meta["away_team"]["short_name"] if is_away_panel else meta["home_team"]["short_name"]
@@ -392,7 +397,7 @@ def plot_shot_frame_for_team(meta: dict,
                 home_y,
                 ax=ax,
                 facecolor=team_kit_home["jersey_color"],
-                edgecolor=team_kit_home["number_color"],
+                edgecolor="black" if team_kit_home["number_color"] == '#ffffff' else team_kit_home["number_color"],
                 s=70,
                 label=team_short_home,
             )
@@ -403,7 +408,7 @@ def plot_shot_frame_for_team(meta: dict,
                 away_y,
                 ax=ax,
                 facecolor=team_kit_away["jersey_color"],
-                edgecolor=team_kit_away["number_color"],
+                edgecolor="black" if team_kit_away["number_color"] == '#ffffff' else team_kit_away["number_color"],
                 s=70,
                 label=team_short_away,
             )
@@ -429,7 +434,6 @@ def plot_shot_frame_for_team(meta: dict,
             edgecolors="black",
             s=140,
             zorder=5,
-            label="Ball",
         )
 
         # Draw line from ball to goal for the shooting team panel only
@@ -465,9 +469,9 @@ def main():
         """
         This page explores three ideas:
         
-        1. **Direction of play** – visualising team shapes so each team always attacks → right in its own panel  
-        2. **Shot frames** – jumping to frames where shots occur and drawing a line from the ball to goal  
-        3. **Position groups** – highlighting specific roles (e.g. CB, DM, CF) in an average minute shape  
+        1. **Direction of play** – average minute shapes with each team always attacking → right  
+        2. **Shot phases** – scrubbing through the frames of the possessions that end in shots  
+        3. **Position groups** – highlighting specific roles inside those average minute shapes  
         """
     )
 
@@ -495,24 +499,178 @@ def main():
         f"({meta['competition_edition']['season']['name']})"
     )
 
+    # Pre-compute minute aggregates (used in Sections 1 and 3)
+    minute_data, minutes_sorted = aggregate_minute_positions_with_roles(match_id)
+
     st.markdown("---")
 
     # -----------------------------------------------------
-    # 1) Average shapes + position group highlight
+    # 1) Average minute shapes (direction fixed)
     # -----------------------------------------------------
-    st.header("1. Average minute shapes with position-group highlight")
+    st.header("1. Average minute shapes (attacking → right)")
 
-    minute_data, minutes_sorted = aggregate_minute_positions_with_roles(match_id)
+    if not minutes_sorted:
+        st.warning("No minute-level tracking aggregation available.")
+    else:
+        min_minute = min(minutes_sorted)
+        max_minute = max(minutes_sorted)
+        minute_sel_simple = st.slider(
+            "Select minute of match (for average shapes)",
+            min_value=min_minute,
+            max_value=max_minute,
+            value=min_minute,
+            key="minute_shapes",
+        )
+
+        st.caption(
+            "Average player locations in a given minute. "
+            "Each team is shown in its own panel, always attacking to the right."
+        )
+
+        col_home1, col_away1 = st.columns(2)
+        with col_home1:
+            fig_h = plot_minute_team_panel(
+                meta, minute_data, minute_sel_simple, team_role="home", highlight_group=None
+            )
+            if fig_h is not None:
+                st.pyplot(fig_h, use_container_width=True)
+            else:
+                st.info("No home-team data for this minute.")
+
+        with col_away1:
+            fig_a = plot_minute_team_panel(
+                meta, minute_data, minute_sel_simple, team_role="away", highlight_group=None
+            )
+            if fig_a is not None:
+                st.pyplot(fig_a, use_container_width=True)
+            else:
+                st.info("No away-team data for this minute.")
+
+    st.markdown("---")
+
+    # -----------------------------------------------------
+    # 2) Shot phases: frames from frame_start → frame_end
+    # -----------------------------------------------------
+    st.header("2. Shot phases: frames leading to the shot")
+
+    shots = get_shot_events(match_id)
+    
+    if shots.empty:
+        st.info("No events with end_type = 'shot' in this match.")
+    else:
+        team_col = "team_in_possession_shortname" if "team_in_possession_shortname" in shots.columns else (
+            "team_in_possession_name" if "team_in_possession_name" in shots.columns else None
+        )
+        team_id_col = "team_in_possession_id" if "team_in_possession_id" in shots.columns else None
+
+        def shot_label(pos: int) -> str:
+            row = shots.iloc[pos]
+            idx = int(row["orig_index"])
+            etype = row.get("event_type", row.get("event_type_name", "shot"))
+            t_start = row.get("time_start", row.get("second_start", ""))
+            t_end = row.get("time_end", row.get("second_end", ""))
+            f_start = row.get("frame_start", "")
+            f_end = row.get("frame_end", "")
+            team_str = row.get(team_col, "") if team_col else ""
+            lead_goal = row.get("lead_to_goal", False)
+            lg_str = " (led to goal)" if bool(lead_goal) else ""
+            team = row.get("team_shortname", "")
+            return (
+                f"Phase {idx} : {team_str} {etype}{lg_str} | "
+                f"Frames {f_start}–{f_end} ({t_start}→{t_end}) | "
+                f"{team} shot"
+            )
+
+        shot_positions = list(range(len(shots)))
+        shot_pos_sel = st.selectbox(
+            "Select a shot phase (dynamic event with end_type='shot')",
+            options=shot_positions,
+            index=0,
+            format_func=shot_label,
+        )
+
+        shot_row = shots.iloc[shot_pos_sel]
+
+        # Frame range for this phase
+        frame_start = None
+        frame_end = None
+        if "frame_start" in shot_row and not pd.isna(shot_row["frame_start"]):
+            frame_start = int(shot_row["frame_start"])
+        if "frame_end" in shot_row and not pd.isna(shot_row["frame_end"]):
+            frame_end = int(shot_row["frame_end"])
+
+        if frame_start is None or frame_end is None or frame_end < frame_start:
+            st.error("Shot event has invalid frame_start/frame_end.")
+        else:
+            st.caption(
+                "Scrub through the frames of this possession phase. "
+                "Panels are standardised so each team attacks to the right; "
+                "a red dashed line shows ball → goal for the shooting team."
+            )
+
+            frame_sel = st.slider(
+                "Frame within shot phase",
+                min_value=frame_start,
+                max_value=frame_end,
+                value=frame_end,
+                key="shot_phase_frame",
+            )
+
+            if frame_sel not in frame_index:
+                st.error(f"Frame {frame_sel} not found in tracking data.")
+            else:
+                frame_dict = frames[frame_index[frame_sel]]
+
+                # Determine shooting team id (if available)
+                shot_team_id = None
+                if team_id_col and team_id_col in shot_row:
+                    try:
+                        shot_team_id = int(shot_row[team_id_col])
+                    except Exception:
+                        shot_team_id = None
+
+                st.subheader(
+                    f"Frame {frame_sel} at timestamp {frame_dict.get('timestamp')} "
+                    f"(frames {frame_start}–{frame_end})"
+                )
+
+                col_h2, col_a2 = st.columns(2)
+                with col_h2:
+                    fig_sh_home = plot_shot_frame_for_team(
+                        meta, frame_dict, player_lookup, focus_team_role="home", shot_team_id=shot_team_id
+                    )
+                    st.pyplot(fig_sh_home, use_container_width=True)
+
+                with col_a2:
+                    fig_sh_away = plot_shot_frame_for_team(
+                        meta, frame_dict, player_lookup, focus_team_role="away", shot_team_id=shot_team_id
+                    )
+                    st.pyplot(fig_sh_away, use_container_width=True)
+
+                with st.expander("Show raw shot event JSON"):
+                    st.json(shot_row.to_dict(), expanded=False)
+
+                with st.expander("Show raw frame JSON"):
+                    st.json(frame_dict, expanded=False)
+
+    st.markdown("---")
+
+    # -----------------------------------------------------
+    # 3) Average minute shapes with position-group highlight
+    # -----------------------------------------------------
+    st.header("3. Position groups inside average shapes")
+
     if not minutes_sorted:
         st.warning("No minute-level tracking aggregation available.")
     else:
         min_minute = min(minutes_sorted)
         max_minute = max(minutes_sorted)
         minute_sel = st.slider(
-            "Select minute of match",
+            "Select minute of match (for role highlight)",
             min_value=min_minute,
             max_value=max_minute,
             value=min_minute,
+            key="minute_roles",
         )
 
         pos_groups = (
@@ -529,12 +687,12 @@ def main():
         )
 
         st.caption(
-            "Each panel shows average player locations for that minute. "
-            "The selected position group (if any) is highlighted in yellow."
+            "Same average shapes as in Section 1, but now you can pick a position group "
+            "(e.g. Center Forward, Midfield, Full Back). Those players are highlighted in yellow."
         )
 
-        col_home, col_away = st.columns(2)
-        with col_home:
+        col_home3, col_away3 = st.columns(2)
+        with col_home3:
             fig_h = plot_minute_team_panel(
                 meta, minute_data, minute_sel, team_role="home", highlight_group=pos_group_sel
             )
@@ -543,7 +701,7 @@ def main():
             else:
                 st.info("No home-team data for this minute.")
 
-        with col_away:
+        with col_away3:
             fig_a = plot_minute_team_panel(
                 meta, minute_data, minute_sel, team_role="away", highlight_group=pos_group_sel
             )
@@ -551,97 +709,6 @@ def main():
                 st.pyplot(fig_a, use_container_width=True)
             else:
                 st.info("No away-team data for this minute.")
-
-    st.markdown("---")
-
-    # -----------------------------------------------------
-    # 2) Shot frames with ball→goal line
-    # -----------------------------------------------------
-    st.header("2. Shot frames: ball to goal")
-
-    shots = get_shot_events(match_id)
-    if shots.empty:
-        st.info("No events with end_type = 'shot' in this match.")
-        return
-
-    # Best-effort team in possession name / id
-    team_col = "team_in_possession_shortname" if "team_in_possession_shortname" in shots.columns else (
-        "team_in_possession_name" if "team_in_possession_name" in shots.columns else None
-    )
-    team_id_col = "team_in_possession_id" if "team_in_possession_id" in shots.columns else None
-
-    def shot_label(pos: int) -> str:
-        row = shots.iloc[pos]
-        idx = int(row["orig_index"])
-        etype = row.get("event_type", row.get("event_type_name", "shot"))
-        t_start = row.get("time_start", row.get("second_start", ""))
-        t_end = row.get("time_end", row.get("second_end", ""))
-        f_start = row.get("frame_start", "")
-        f_end = row.get("frame_end", "")
-        team_str = row.get(team_col, "") if team_col else ""
-        lead_goal = row.get("lead_to_goal", False)
-        lg_str = " (led to goal)" if bool(lead_goal) else ""
-        return (
-            f"{idx} : {team_str} {etype}{lg_str} | "
-            f"Frames {f_start}–{f_end} ({t_start}→{t_end})"
-        )
-
-    shot_positions = list(range(len(shots)))
-    shot_pos_sel = st.selectbox(
-        "Select a shot event",
-        options=shot_positions,
-        index=0,
-        format_func=shot_label,
-    )
-
-    shot_row = shots.iloc[shot_pos_sel]
-
-    # Pick frame: prefer frame_end, else frame_start
-    frame_num = None
-    if "frame_end" in shot_row and not pd.isna(shot_row["frame_end"]):
-        frame_num = int(shot_row["frame_end"])
-    elif "frame_start" in shot_row and not pd.isna(shot_row["frame_start"]):
-        frame_num = int(shot_row["frame_start"])
-
-    if frame_num is None:
-        st.error("Shot event has no valid frame_start/frame_end.")
-        return
-
-    if frame_num not in frame_index:
-        st.error(f"Frame {frame_num} not found in tracking data.")
-        return
-
-    frame_dict = frames[frame_index[frame_num]]
-
-    # Determine shooting team id (if available)
-    shot_team_id = None
-    if team_id_col and team_id_col in shot_row:
-        try:
-            shot_team_id = int(shot_row[team_id_col])
-        except Exception:
-            shot_team_id = None
-
-    st.subheader(f"Frame {frame_num} at timestamp {frame_dict.get('timestamp')}")
-    st.caption("Red dotted line: ball → goal for the shooting team (when team id is available).")
-
-    col_h2, col_a2 = st.columns(2)
-    with col_h2:
-        fig_sh_home = plot_shot_frame_for_team(
-            meta, frame_dict, player_lookup, focus_team_role="home", shot_team_id=shot_team_id
-        )
-        st.pyplot(fig_sh_home, use_container_width=True)
-
-    with col_a2:
-        fig_sh_away = plot_shot_frame_for_team(
-            meta, frame_dict, player_lookup, focus_team_role="away", shot_team_id=shot_team_id
-        )
-        st.pyplot(fig_sh_away, use_container_width=True)
-
-    with st.expander("Show raw shot event JSON"):
-        st.json(shot_row.to_dict(), expanded=False)
-
-    with st.expander("Show raw frame JSON"):
-        st.json(frame_dict, expanded=False)
 
 
 if __name__ == "__main__":
