@@ -73,6 +73,9 @@ def add_page_selector():
     st.page_link("pages/phases_of_play.py", label="Phases of Play Analysis")
     st.page_link("pages/minute_by_minute.py", label="Minute by Minute Analysis")
     st.page_link("pages/shot_creation_probability.py", label="Shot Creation Probability")
+    
+    st.text("Bonus Pages:")
+    st.page_link("pages/shapes_and_shots.py", label="Shot and Shape further analysis")
    
 
     

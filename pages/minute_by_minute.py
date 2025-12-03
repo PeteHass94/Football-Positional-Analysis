@@ -346,35 +346,42 @@ def plot_minute_pitch(minute: int, meta: dict, minute_data: dict):
     )
     fig, ax = pitch.draw(figsize=(4, 3))
 
+    handles = []
+    labels = []
+    
     # Home players
     home_points = data["home"]
     if home_points:
         xs = [p["x"] for p in home_points]
         ys = [p["y"] for p in home_points]
-        pitch.scatter(
+        h = pitch.scatter(
             xs,
             ys,
             ax=ax,
             facecolor=meta["home_team_kit"]["jersey_color"],
-            edgecolor=meta["home_team_kit"]["number_color"],
+            edgecolor= "black" if meta["home_team_kit"]["number_color"] == '#ffffff' else meta["home_team_kit"]["number_color"],
             s=60,
             label=meta["home_team"]["short_name"],
         )
+        handles.append(h)
+        labels.append(meta["home_team"]["short_name"])
 
     # Away players
     away_points = data["away"]
     if away_points:
         xs = [p["x"] for p in away_points]
         ys = [p["y"] for p in away_points]
-        pitch.scatter(
+        a = pitch.scatter(
             xs,
             ys,
             ax=ax,
             facecolor=meta["away_team_kit"]["jersey_color"],
-            edgecolor=meta["away_team_kit"]["number_color"],
+            edgecolor= "black" if meta["away_team_kit"]["number_color"] == '#ffffff' else meta["away_team_kit"]["number_color"],
             s=60,
             label=meta["away_team"]["short_name"],
         )
+        handles.append(a)
+        labels.append(meta["away_team"]["short_name"])
 
     # Ball
     ball = data["ball"]
@@ -387,10 +394,22 @@ def plot_minute_pitch(minute: int, meta: dict, minute_data: dict):
             facecolor="white",
             edgecolors="black",
             s=120,
-            label="Ball",
+            # label="Ball",
         )
 
-    ax.set_title(f"Minute {minute}", fontsize=10)
+    ax.set_title(f"Minute {minute}", fontsize=10, loc="left", pad=1)
+    # Right-aligned legend ON TITLE ROW using figure coordinates
+    fig.legend(
+        handles,
+        labels,
+        loc="upper right",
+        bbox_to_anchor=(0.95, 0.98),  # near top-right corner of figure
+        fontsize=9,
+        frameon=False,
+        ncols=2,
+        columnspacing=1,
+        handletextpad=0.2,
+    )
     return fig
 
 

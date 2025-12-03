@@ -100,7 +100,7 @@ def plot_frame_on_pitch(frame_dict, meta, player_lookup):
         pitch.scatter(
             home_x, home_y, ax=ax,
             facecolor=meta["home_team_kit"]["jersey_color"],
-            edgecolor=meta["home_team_kit"]["number_color"],
+            edgecolor= "black" if meta["home_team_kit"]["number_color"] == '#ffffff' else meta["home_team_kit"]["number_color"],
             s=80,
             label=meta["home_team"]["short_name"],
         )
@@ -108,7 +108,7 @@ def plot_frame_on_pitch(frame_dict, meta, player_lookup):
         pitch.scatter(
             away_x, away_y, ax=ax,
             facecolor=meta["away_team_kit"]["jersey_color"],
-            edgecolor=meta["away_team_kit"]["number_color"],
+            edgecolor= "black" if meta["away_team_kit"]["number_color"] == '#ffffff' else meta["away_team_kit"]["number_color"],
             s=80,
             label=meta["away_team"]["short_name"],
         )
