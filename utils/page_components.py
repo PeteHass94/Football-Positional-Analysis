@@ -55,7 +55,7 @@ def set_page_config():
     """
     st.set_page_config(
         layout="wide",
-        page_title="Game State Analsis",
+        page_title="SkillCorner Analysis",
         page_icon="theme/Logo/PH logo.png",
         initial_sidebar_state="collapsed",
         menu_items={

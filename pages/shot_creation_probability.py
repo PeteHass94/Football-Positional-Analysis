@@ -885,6 +885,30 @@ def main():
     # Train models
     # -----------------------------------------------------
     st.header("3. Train models")
+    st.markdown("""
+            ### How the train/test split works
+
+            Each row in the dataset is **one (match, minute, team)** sample.
+
+            - Features = positional shape + ball context at that minute  
+            - Label `label_shot_next5` = 1 if that team takes a **shot in the next 5 minutes**, else 0.
+
+            We then split the data into a **training set** and a **test set** using
+            `train_test_split` with `stratify=y`:
+
+            - The training set is used to **fit** the models.
+            - The test set is held out and only used to **evaluate** how well the models generalise.
+            - Stratification keeps the ratio of “shot” vs “no shot” minutes similar in both sets.
+            - `random_state=42` makes the split reproducible.
+
+            For each model:
+            - We train only on `X_train, y_train`.
+            - We compute probabilities on `X_test` and score using **ROC AUC**.
+            - A higher AUC means the model is better at ranking truly dangerous minutes above safe ones.
+
+            So the AUC you see here is an **out-of-sample estimate**: performance on minutes the model did not see during training.
+            """)
+
 
     try:
         from sklearn.model_selection import train_test_split
