@@ -1,9 +1,10 @@
+# Core data & ML
 pandas
-streamlit
 numpy
-mplsoccer
-plotly
-plotly-express
-pathlib
 scikit-learn
 xgboost
+
+# App & viz
+streamlit>=1.54.0
+mplsoccer
+plotly
